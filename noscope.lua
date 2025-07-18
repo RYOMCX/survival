@@ -3,7 +3,6 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -76,94 +75,139 @@ local SETTINGS = {
 local function CreateGUI()
     local ScreenGui = Instance.new("ScreenGui", CoreGui)
     local MainFrame = Instance.new("Frame", ScreenGui)
-    MainFrame.Size = UDim2.new(0, 650, 0, 450)
-    MainFrame.Position = UDim2.new(0.5, -325, 0.5, -225)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    MainFrame.Size = UDim2.new(0, 580, 0, 400)
+    MainFrame.Position = UDim2.new(0.5, -290, 0.5, -200)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    MainFrame.BorderSizePixel = 1
+    MainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
     MainFrame.Draggable = true
-    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 5)
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 6)
+    
+    local ClickSound = Instance.new("Sound", MainFrame)
+    ClickSound.SoundId = "rbxassetid://2456494924"
+    ClickSound.Volume = 0.8
 
     local TabFrame = Instance.new("Frame", MainFrame)
     TabFrame.Size = UDim2.new(0, 120, 1, 0)
-    TabFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    TabFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 
     local ContentFrame = Instance.new("Frame", MainFrame)
     ContentFrame.Size = UDim2.new(1, -120, 1, 0)
     ContentFrame.Position = UDim2.new(0, 120, 0, 0)
-    ContentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    ContentFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 
     local Tabs = {}
     local function CreateTab(name)
         local page = Instance.new("ScrollingFrame", ContentFrame)
         page.Size = UDim2.new(1, 0, 1, 0)
         page.Visible = false
-        page.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        page.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
         page.BorderSizePixel = 0
+        page.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
+        page.ScrollBarThickness = 4
+        
         local layout = Instance.new("UIListLayout", page)
-        layout.Padding = UDim.new(0, 10)
+        layout.Padding = UDim.new(0, 8)
         layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
 
         local button = Instance.new("TextButton", TabFrame)
         button.Size = UDim2.new(1, 0, 0, 40)
-        button.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        button.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
         button.Text = name
         button.TextColor3 = Color3.new(1,1,1)
+        button.Font = Enum.Font.GothamSemibold
         button.MouseButton1Click:Connect(function()
             for _, t in pairs(Tabs) do
                 t.Page.Visible = false
-                t.Button.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+                t.Button.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
             end
             page.Visible = true
-            button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
         end)
         
         Tabs[name] = {Page = page, Button = button}
         return page
     end
     
-    local function CreateToggle(parent, text, category, key)
+    local function CreateSwitchToggle(parent, text, category, key)
         local container = Instance.new("Frame", parent)
-        container.Size = UDim2.new(0.9, 0, 0, 30)
+        container.Size = UDim2.new(0.9, 0, 0, 25)
         container.BackgroundTransparency = 1
+        container.LayoutOrder = 1
+
         local label = Instance.new("TextLabel", container)
-        label.Size = UDim2.new(0.7, 0, 1, 0)
+        label.Size = UDim2.new(0.7, -5, 1, 0)
         label.Text = text
-        label.TextColor3 = Color3.new(1,1,1)
+        label.TextColor3 = Color3.fromRGB(200, 200, 200)
+        label.Font = Enum.Font.Gotham
         label.BackgroundTransparency = 1
         label.TextXAlignment = Enum.TextXAlignment.Left
         
-        local toggle = Instance.new("TextButton", container)
-        toggle.Size = UDim2.new(0.3, 0, 1, 0)
-        toggle.Position = UDim2.new(0.7, 0, 0, 0)
-        toggle.Text = ""
-        local function update() toggle.BackgroundColor3 = SETTINGS[category][key] and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,0,0) end
-        toggle.MouseButton1Click:Connect(function() SETTINGS[category][key] = not SETTINGS[category][key]; update() end)
-        update()
+        local switchTrack = Instance.new("TextButton", container)
+        switchTrack.Size = UDim2.new(0.3, 0, 0.8, 0)
+        switchTrack.Position = UDim2.new(0.7, 0, 0.1, 0)
+        switchTrack.Text = ""
+        Instance.new("UICorner", switchTrack).CornerRadius = UDim.new(1, 0)
+        
+        local switchNub = Instance.new("Frame", switchTrack)
+        switchNub.Size = UDim2.new(0.5, -4, 1, -4)
+        switchNub.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        switchNub.BorderSizePixel = 0
+        Instance.new("UICorner", switchNub).CornerRadius = UDim.new(1, 0)
+
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        
+        local function update(isInstant)
+            local enabled = SETTINGS[category][key]
+            local trackGoal = { BackgroundColor3 = enabled and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(80, 80, 80) }
+            local nubGoal = { Position = enabled and UDim2.new(0.5, 2, 0, 2) or UDim2.new(0, 2, 0, 2) }
+
+            if isInstant then
+                switchTrack.BackgroundColor3 = trackGoal.BackgroundColor3
+                switchNub.Position = nubGoal.Position
+            else
+                TweenService:Create(switchTrack, tweenInfo, trackGoal):Play()
+                TweenService:Create(switchNub, tweenInfo, nubGoal):Play()
+            end
+        end
+        
+        switchTrack.MouseButton1Click:Connect(function()
+            SETTINGS[category][key] = not SETTINGS[category][key]
+            ClickSound:Play()
+            update(false)
+        end)
+        
+        update(true)
         return container
     end
 
     local espTab = CreateTab("ESP")
-    CreateToggle(espTab, "Enable ESP", "ESP", "Enabled")
-    CreateToggle(espTab, "Boxes", "ESP", "Boxes")
-    CreateToggle(espTab, "Names", "ESP", "Names")
-    CreateToggle(espTab, "Health Bars", "ESP", "HealthBars")
-    CreateToggle(espTab, "Distance", "ESP", "Distance")
-    CreateToggle(espTab, "Skeleton", "ESP", "Skeleton")
-    CreateToggle(espTab, "Weapon", "ESP", "Weapon")
-    CreateToggle(espTab, "Tracers", "ESP", "Tracers")
-    CreateToggle(espTab, "Head Dots", "ESP", "HeadDots")
-    CreateToggle(espTab, "Chams", "ESP", "Chams")
-    CreateToggle(espTab, "Team Check", "ESP", "TeamCheck")
+    CreateSwitchToggle(espTab, "Enable ESP", "ESP", "Enabled")
+    CreateSwitchToggle(espTab, "Boxes", "ESP", "Boxes")
+    CreateSwitchToggle(espTab, "Names", "ESP", "Names")
+    CreateSwitchToggle(espTab, "Health Bars", "ESP", "HealthBars")
+    CreateSwitchToggle(espTab, "Distance", "ESP", "Distance")
+    CreateSwitchToggle(espTab, "Skeleton", "ESP", "Skeleton")
+    CreateSwitchToggle(espTab, "Weapon", "ESP", "Weapon")
+    CreateSwitchToggle(espTab, "Tracers", "ESP", "Tracers")
+    CreateSwitchToggle(espTab, "Head Dots", "ESP", "HeadDots")
+    CreateSwitchToggle(espTab, "Chams", "ESP", "Chams")
+    CreateSwitchToggle(espTab, "Team Check", "ESP", "TeamCheck")
     
     local aimbotTab = CreateTab("Aimbot")
-    CreateToggle(aimbotTab, "Enable Aimbot", "Aimbot", "Enabled")
-    CreateToggle(aimbotTab, "Team Check", "Aimbot", "TeamCheck")
+    CreateSwitchToggle(aimbotTab, "Enable Aimbot", "Aimbot", "Enabled")
+    CreateSwitchToggle(aimbotTab, "Team Check", "Aimbot", "TeamCheck")
     
     local blatantTab = CreateTab("Blatant")
-    CreateToggle(blatantTab, "Kill Aura", "Blatant", "KillAura")
-    CreateToggle(blatantTab, "Infinite Ammo", "Blatant", "InfiniteAmmo")
-    CreateToggle(blatantTab, "No Recoil", "Blatant", "NoRecoil")
-    CreateToggle(blatantTab, "Fly", "Blatant", "Fly")
-    CreateToggle(blatantTab, "Noclip", "Blatant", "Noclip")
+    CreateSwitchToggle(blatantTab, "Kill Aura", "Blatant", "KillAura")
+    CreateSwitchToggle(blatantTab, "Infinite Ammo", "Blatant", "InfiniteAmmo")
+    CreateSwitchToggle(blatantTab, "No Recoil", "Blatant", "NoRecoil")
+    CreateSwitchToggle(blatantTab, "Fly", "Blatant", "Fly")
+    CreateSwitchToggle(blatantTab, "Noclip", "Blatant", "Noclip")
+
+    local tabLayout = Instance.new("UIListLayout", TabFrame)
+    tabLayout.Padding = UDim.new(0, 5)
 
     Tabs["ESP"].Button.MouseButton1Click:Invoke()
     return ScreenGui
@@ -217,17 +261,11 @@ function CORE.Modules.ESP()
 
                     if SETTINGS.ESP.Skeleton then
                         local parts = {
-                            Head = "UpperTorso",
-                            UpperTorso = "LowerTorso",
-                            LowerTorso = "HumanoidRootPart",
-                            RightUpperArm = "RightLowerArm",
-                            RightLowerArm = "RightHand",
-                            LeftUpperArm = "LeftLowerArm",
-                            LeftLowerArm = "LeftHand",
-                            RightUpperLeg = "RightLowerLeg",
-                            RightLowerLeg = "RightFoot",
-                            LeftUpperLeg = "LeftLowerLeg",
-                            LeftLowerLeg = "LeftFoot",
+                            Head = "UpperTorso", UpperTorso = "LowerTorso", LowerTorso = "HumanoidRootPart",
+                            RightUpperArm = "RightLowerArm", RightLowerArm = "RightHand",
+                            LeftUpperArm = "LeftLowerArm", LeftLowerArm = "LeftHand",
+                            RightUpperLeg = "RightLowerLeg", RightLowerLeg = "RightFoot",
+                            LeftUpperLeg = "LeftLowerLeg", LeftLowerLeg = "LeftFoot",
                         }
                         for p1, p2 in pairs(parts) do
                             local part1, part2 = character:FindFirstChild(p1), character:FindFirstChild(p2)

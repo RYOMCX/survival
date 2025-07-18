@@ -24,7 +24,9 @@ env.Settings = {
     InfAmmo_Enabled = false,
     NoRecoil_Enabled = false,
     FOVCircle_Visible = true,
-    FOVCircle_Size = 80
+    FOVCircle_Size = 80,
+    SpeedHack_Enabled = false,
+    JumpHack_Enabled = false
 }
 env.ESP_Players = {}
 env.Connections = {}
@@ -123,6 +125,10 @@ Instance.new("UICorner", close).CornerRadius = UDim.new(0, 6)
 close.MouseButton1Click:Connect(function() 
     mainGui:Destroy()
     badge:Destroy()
+    fovCircle:Remove()
+    for _, conn in pairs(env.Connections) do
+        conn:Disconnect()
+    end
 end)
 
 local contentContainer = Instance.new("Frame", mainFrame)
@@ -158,6 +164,7 @@ fovCircle.Radius = env.Settings.FOVCircle_Size
 fovCircle.Thickness = 2
 fovCircle.Color = Color3.fromRGB(0, 255, 127)
 fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+fovCircle.Filled = false -- Only outline, no fill
 
 -- ESP Window
 local espWindow = Instance.new("Frame", mainGui)
@@ -198,6 +205,7 @@ playerList.BorderSizePixel = 0
 Instance.new("UICorner", playerList)
 local playerListLayout = Instance.new("UIListLayout", playerList)
 playerListLayout.Padding = UDim.new(0, 2)
+playerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- Improved Layout System
 local function updateLayout()
@@ -252,10 +260,11 @@ local function createToggleButton(text, parent, callback)
 end
 
 -- Fixed Slider System
-local function createSlider(parent, labelText, minVal, maxVal, defaultVal, callback)
+local function createSlider(parent, labelText, minVal, maxVal, defaultVal, callback, enabledCallback)
     local sliderFrame = Instance.new("Frame", parent)
     sliderFrame.Size = UDim2.new(1, -10, 0, 50)
     sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Name = labelText .. "SliderFrame"
     
     local label = Instance.new("TextLabel", sliderFrame)
     label.Size = UDim2.new(1, 0, 0, 20)
@@ -337,8 +346,54 @@ local function createSlider(parent, labelText, minVal, maxVal, defaultVal, callb
         end
     end)
     
+    -- Enable/disable based on toggle state
+    if enabledCallback then
+        local function updateSliderState(enabled)
+            sliderHandle.Active = enabled
+            sliderBar.Active = enabled
+            sliderFill.BackgroundColor3 = enabled and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(100, 100, 100)
+            sliderHandle.BackgroundColor3 = enabled and Color3.fromRGB(200, 200, 200) or Color3.fromRGB(150, 150, 150)
+        end
+        
+        updateSliderState(enabledCallback())
+    end
+    
     return sliderFrame
 end
+
+-- Speed Hack Toggle
+local speedToggle = createToggleButton("Speed Hack", leftColumn, function(s) 
+    env.Settings.SpeedHack_Enabled = s 
+    -- Update slider state
+    local speedSlider = leftColumn:FindFirstChild("SpeedSliderFrame")
+    if speedSlider then
+        local sliderBar = speedSlider:FindFirstChild("Frame")
+        local sliderFill = sliderBar and sliderBar:FindFirstChild("Frame")
+        local sliderHandle = sliderBar and sliderBar:FindFirstChild("TextButton")
+        
+        if sliderFill and sliderHandle then
+            sliderFill.BackgroundColor3 = s and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(100, 100, 100)
+            sliderHandle.BackgroundColor3 = s and Color3.fromRGB(200, 200, 200) or Color3.fromRGB(150, 150, 150)
+        end
+    end
+end)
+
+-- Jump Hack Toggle
+local jumpToggle = createToggleButton("Jump Hack", leftColumn, function(s) 
+    env.Settings.JumpHack_Enabled = s 
+    -- Update slider state
+    local jumpSlider = leftColumn:FindFirstChild("JumpSliderFrame")
+    if jumpSlider then
+        local sliderBar = jumpSlider:FindFirstChild("Frame")
+        local sliderFill = sliderBar and sliderBar:FindFirstChild("Frame")
+        local sliderHandle = sliderBar and sliderBar:FindFirstChild("TextButton")
+        
+        if sliderFill and sliderHandle then
+            sliderFill.BackgroundColor3 = s and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(100, 100, 100)
+            sliderHandle.BackgroundColor3 = s and Color3.fromRGB(200, 200, 200) or Color3.fromRGB(150, 150, 150)
+        end
+    end
+end)
 
 -- FOV Circle Slider
 createSlider(leftColumn, "FOV Size", 10, 200, env.Settings.FOVCircle_Size, function(v) 
@@ -347,8 +402,12 @@ createSlider(leftColumn, "FOV Size", 10, 200, env.Settings.FOVCircle_Size, funct
 end)
 
 -- Other Sliders
-createSlider(leftColumn, "Speed", 16, 200, 16, function(v) env.Settings.WalkSpeed = v end)
-createSlider(leftColumn, "Jump", 50, 300, 50, function(v) env.Settings.JumpPower = v end)
+createSlider(leftColumn, "Speed", 16, 200, 16, function(v) env.Settings.WalkSpeed = v end, function() 
+    return env.Settings.SpeedHack_Enabled 
+end)
+createSlider(leftColumn, "Jump", 50, 300, 50, function(v) env.Settings.JumpPower = v end, function() 
+    return env.Settings.JumpHack_Enabled 
+end)
 createSlider(leftColumn, "POV", 30, 120, 70, function(v) 
     env.Settings.FieldOfView = v
     Camera.FieldOfView = v
@@ -554,9 +613,14 @@ env.Connections.render = RunService.RenderStepped:Connect(function()
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return end
     
-    -- Movement settings
-    hum.WalkSpeed = env.Settings.WalkSpeed
-    hum.JumpPower = env.Settings.JumpPower
+    -- Movement settings (only apply if hack is enabled)
+    if env.Settings.SpeedHack_Enabled then
+        hum.WalkSpeed = env.Settings.WalkSpeed
+    end
+    
+    if env.Settings.JumpHack_Enabled then
+        hum.JumpPower = env.Settings.JumpPower
+    end
     
     -- Fly system
     if env.Settings.Fly_Enabled and flyVelocity then

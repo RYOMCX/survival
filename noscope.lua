@@ -1,297 +1,316 @@
-local function RYOFC_PHOENIX_ENGINE_V2()
-    local CoreGui = game:GetService("CoreGui")
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-    local UserInputService = game:GetService("UserInputService")
-    local TweenService = game:GetService("TweenService")
-    local Workspace = game:GetService("Workspace")
-    local Camera = Workspace.CurrentCamera
-    local LocalPlayer = Players.LocalPlayer
+local Players, RunService, UserInputService, Workspace = game:GetService("Players"), game:GetService("RunService"), game:GetService("UserInputService"), game:GetService("Workspace")
+local LocalPlayer, Camera = Players.LocalPlayer, Workspace.CurrentCamera
+local DrawingObjects = {}
 
-    if not LocalPlayer then
-        Players.LocalPlayerAdded:Wait()
-        LocalPlayer = Players.LocalPlayer
-    end
+getgenv().Settings = {
+    Aimbot = { Enabled = false, TeamCheck = true, VisibleOnly = true, FOV = 100, Part = "Head" },
+    ESP = { Enabled = true, Names = true, Distance = true, Health = true, Boxes = true, Tracers = true, Skeleton = true, TeamCheck = true, VisibleColor = Color3.fromRGB(255, 0, 80), InvisibleColor = Color3.fromRGB(255, 150, 0) },
+    SilentAim = { Enabled = false },
+    MagicBullet = { Enabled = false }
+}
+local Settings = getgenv().Settings
 
-    local CORE = {
-        Active = true,
-        Connections = {},
-        Modules = {},
-        GUI = {}
-    }
+-- SECTION 2: CUSTOM UI FRAMEWORK
+-- ==============================================================================================
 
-    local SETTINGS = {
-        Aimbot = {
-            Enabled = true,
-            TargetPart = "Head",
-            FOV = 150,
-            Smoothing = 3,
-            TeamCheck = true,
-            VisibilityCheck = true,
-        },
-        Combat = {
-            MagicBullet = false,
-            AutoHeadshot = true,
-            Triggerbot = false,
-        },
-        ESP = {
-            Enabled = true,
-            TeamCheck = true,
-            Boxes = true,
-            Names = true,
-            Distance = true,
-            HealthBars = true,
-            HealthText = true,
-            Weapon = true,
-            Skeleton = true,
-            Tracers = true,
-            HeadDots = true,
-            Chams = true,
-            OffscreenArrows = true,
-        },
-    }
+-- Main GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SkyDominatorGUI"
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+ScreenGui.ResetOnSpawn = false
 
-    local function CreateGUIPool(player)
-        if CORE.GUI.ESPPool and CORE.GUI.ESPPool[player] then return end
-        local pool = {}
-        pool.Holder = Instance.new("BillboardGui", CoreGui)
-        pool.Holder.AlwaysOnTop = true
-        pool.Holder.Size = UDim2.new(0, 0, 0, 0)
-        pool.Holder.Enabled = false
+-- Main Window
+local MainWindow = Instance.new("Frame")
+MainWindow.Name = "MainWindow"
+MainWindow.Parent = ScreenGui
+MainWindow.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainWindow.BorderColor3 = Color3.fromRGB(255, 0, 80)
+MainWindow.BorderSizePixel = 1
+MainWindow.Position = UDim2.new(0.5, -225, 0.5, -175)
+MainWindow.Size = UDim2.new(0, 450, 0, 350)
+MainWindow.Active = true
+MainWindow.Draggable = true
 
-        pool.Box = Instance.new("Frame", pool.Holder)
-        pool.Box.BackgroundTransparency = 1
-        pool.Box.BorderSizePixel = 1
-        
-        pool.Name = Instance.new("TextLabel", pool.Holder)
-        pool.Name.Font = Enum.Font.SourceSans; pool.Name.TextSize = 14; pool.Name.TextColor3 = Color3.new(1,1,1); pool.Name.BackgroundTransparency = 1
-        
-        pool.HealthBar = Instance.new("Frame", pool.Holder)
-        pool.HealthBar.BackgroundColor3 = Color3.fromRGB(20,20,20); pool.HealthBar.BorderSizePixel = 0
-        pool.HealthFill = Instance.new("Frame", pool.HealthBar)
-        
-        pool.HealthText = Instance.new("TextLabel", pool.Holder)
-        pool.HealthText.Font = Enum.Font.SourceSans; pool.HealthText.TextSize = 12; pool.HealthText.TextColor3 = Color3.new(1,1,1); pool.HealthText.BackgroundTransparency = 1
-        
-        pool.Distance = Instance.new("TextLabel", pool.Holder)
-        pool.Distance.Font = Enum.Font.SourceSans; pool.Distance.TextSize = 12; pool.Distance.TextColor3 = Color3.new(1,1,1); pool.Distance.BackgroundTransparency = 1
-        
-        pool.Weapon = Instance.new("TextLabel", pool.Holder)
-        pool.Weapon.Font = Enum.Font.SourceSans; pool.Weapon.TextSize = 12; pool.Weapon.TextColor3 = Color3.new(1,1,1); pool.Weapon.BackgroundTransparency = 1
-        
-        CORE.GUI.ESPPool[player] = pool
-    end
+-- Title Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Parent = MainWindow
+TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BorderColor3 = Color3.fromRGB(255, 0, 80)
 
-    local function BuildGUI()
-        CORE.GUI.ESPPool = {}
-        CORE.GUI.ScreenGui = Instance.new("ScreenGui", CoreGui)
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Parent = TitleBar
+TitleLabel.BackgroundColor3 = Color3.new(1, 1, 1)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0.02, 0, 0, 0)
+TitleLabel.Size = UDim2.new(0.8, 0, 1, 0)
+TitleLabel.Font = Enum.Font.SourceSansSemibold
+TitleLabel.Text = "SkyDominator V3 // RYOXFC"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-        local MainFrame = Instance.new("Frame", CORE.GUI.ScreenGui)
-        MainFrame.Size = UDim2.new(0, 250, 0, 420)
-        MainFrame.Position = UDim2.new(1, -270, 0.5, -210)
-        MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-        MainFrame.Draggable = true
-        Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 4)
+-- Close Button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Parent = TitleBar
+CloseButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+CloseButton.Position = UDim2.new(1, -30, 0, 0)
+CloseButton.Size = UDim2.new(0, 30, 1, 0)
+CloseButton.Font = Enum.Font.SourceSans
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
-        local Header = Instance.new("Frame", MainFrame)
-        Header.Size = UDim2.new(1, 0, 0, 30)
-        Header.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-        local Title = Instance.new("TextLabel", Header)
-        Title.Size = UDim2.new(1, -60, 1, 0)
-        Title.Text = "RYOFC PHOENIX V2"
-        Title.Font = Enum.Font.GothamBold
-        Title.TextColor3 = Color3.new(1,1,1)
-        
-        local CloseButton = Instance.new("TextButton", Header)
-        CloseButton.Size = UDim2.new(0,20,0,20); CloseButton.Position = UDim2.new(1,-25,0.5,-10); CloseButton.Text = "X"; CloseButton.BackgroundColor3 = Color3.fromRGB(200,50,50)
-        CloseButton.MouseButton1Click:Connect(function() CORE.GUI.ScreenGui:Destroy() CORE.Active = false for _,c in pairs(CORE.Connections) do c:Disconnect() end end)
+-- Feature Container
+local Container = Instance.new("Frame")
+Container.Name = "Container"
+Container.Parent = MainWindow
+Container.BackgroundColor3 = Color3.new(1, 1, 1)
+Container.BackgroundTransparency = 1
+Container.Position = UDim2.new(0, 0, 0, 30)
+Container.Size = UDim2.new(1, 0, 1, -30)
 
-        local MinimizeButton = Instance.new("TextButton", Header)
-        MinimizeButton.Size = UDim2.new(0,20,0,20); MinimizeButton.Position = UDim2.new(1,-50,0.5,-10); MinimizeButton.Text = "-"; MinimizeButton.BackgroundColor3 = Color3.fromRGB(80,80,80)
+-- Function to create toggles
+local function CreateToggle(parent, text, flagTable, flagKey)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Parent = parent
+    ToggleFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    ToggleFrame.Size = UDim2.new(1, -20, 0, 25)
+    ToggleFrame.Position = UDim2.new(0, 10, 0, #parent:GetChildren() * 30)
 
-        local RestoreButton = Instance.new("TextButton", CORE.GUI.ScreenGui)
-        RestoreButton.Size = UDim2.new(0,120,0,30); RestoreButton.Position = UDim2.new(1,-130,1,-40); RestoreButton.Text = "RYOFC HACKS"; RestoreButton.Visible = false; RestoreButton.BackgroundColor3 = Color3.fromRGB(40,40,45); RestoreButton.TextColor3 = Color3.new(1,1,1)
-        
-        MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false; RestoreButton.Visible = true end)
-        RestoreButton.MouseButton1Click:Connect(function() MainFrame.Visible = true; RestoreButton.Visible = false end)
-        
-        local Content = Instance.new("ScrollingFrame", MainFrame)
-        Content.Size = UDim2.new(1, -10, 1, -35); Content.Position = UDim2.new(0, 5, 0, 35); Content.CanvasSize = UDim2.new(0,0,0,0); Content.BackgroundTransparency = 1; Content.BorderSizePixel = 0
-        local Layout = Instance.new("UIListLayout", Content)
-        Layout.Padding = UDim.new(0, 5)
+    local Label = Instance.new("TextLabel")
+    Label.Parent = ToggleFrame
+    Label.Size = UDim2.new(0.7, 0, 1, 0)
+    Label.BackgroundColor3 = Color3.new(1, 1, 1)
+    Label.BackgroundTransparency = 1
+    Label.Font = Enum.Font.SourceSans
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.Text = text
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Position = UDim2.new(0, 10, 0, 0)
 
-        local function CreateCategory(text)
-            local label = Instance.new("TextLabel", Content)
-            label.Size = UDim2.new(1,0,0,25); label.Text = "--- "..text.." ---"; label.Font = Enum.Font.GothamBold; label.TextColor3 = Color3.new(1,1,1); label.BackgroundTransparency = 1
-        end
-
-        local function CreateToggle(parent, text, category, key)
-            local container = Instance.new("TextButton", parent)
-            container.Size = UDim2.new(1, -10, 0, 25); container.Text = ""; container.BackgroundColor3 = Color3.fromRGB(50,50,55)
-            local label = Instance.new("TextLabel", container)
-            label.Size = UDim2.new(1,0,1,0); label.Text = text; label.TextColor3 = Color3.new(1,1,1); label.BackgroundTransparency = 1
-            local indicator = Instance.new("Frame", container)
-            indicator.Size = UDim2.new(0,10,0,10); indicator.Position = UDim2.new(1,-15,0.5,-5); indicator.BorderSizePixel = 0
-            local function update() indicator.BackgroundColor3 = SETTINGS[category][key] and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,0,0) end
-            container.MouseButton1Click:Connect(function() SETTINGS[category][key] = not SETTINGS[category][key]; update() end)
-            update()
-        end
-        
-        CreateCategory("COMBAT")
-        CreateToggle(Content, "Magic Bullet", "Combat", "MagicBullet")
-        CreateToggle(Content, "Auto Headshot", "Combat", "AutoHeadshot")
-        
-        CreateCategory("AIMBOT")
-        CreateToggle(Content, "Aimbot", "Aimbot", "Enabled")
-        
-        CreateCategory("ESP")
-        CreateToggle(Content, "ESP Enabled", "ESP", "Enabled")
-        CreateToggle(Content, "Boxes", "ESP", "Boxes")
-        CreateToggle(Content, "Names", "ESP", "Names")
-        CreateToggle(Content, "Health Bar", "ESP", "HealthBars")
-        CreateToggle(Content, "Health Text", "ESP", "HealthText")
-        CreateToggle(Content, "Distance", "ESP", "Distance")
-        CreateToggle(Content, "Weapon", "ESP", "Weapon")
-        CreateToggle(Content, "Tracers", "ESP", "Tracers")
-        CreateToggle(Content, "Skeleton", "ESP", "Skeleton")
-        CreateToggle(Content, "Head Dots", "ESP", "HeadDots")
-        CreateToggle(Content, "Chams", "ESP", "Chams")
-        CreateToggle(Content, "Off-screen Arrows", "ESP", "OffscreenArrows")
-        CreateToggle(Content, "Team Check", "ESP", "TeamCheck")
-        
-        Layout.Parent.CanvasSize = UDim2.new(0,0,0,Layout.AbsoluteContentSize.Y)
-    end
-
-    function CORE.Modules.Aimbot()
-        local currentTarget = nil
-        local function GetTarget()
-            local bestTarget, minFov = nil, SETTINGS.Aimbot.FOV
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character and (not SETTINGS.Aimbot.TeamCheck or player.Team ~= LocalPlayer.Team) then
-                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                    local targetPart = player.Character:FindFirstChild(SETTINGS.Aimbot.TargetPart)
-                    if SETTINGS.Combat.MagicBullet and SETTINGS.Combat.AutoHeadshot then targetPart = player.Character:FindFirstChild("Head") end
-                    if humanoid and humanoid.Health > 0 and targetPart then
-                        local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
-                        if onScreen then
-                            local dist = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
-                            if dist < minFov then bestTarget = targetPart; minFov = dist end
-                        end
-                    end
-                end
-            end
-            return bestTarget
-        end
-        local function Update()
-            if SETTINGS.Aimbot.Enabled then
-                currentTarget = GetTarget()
-                if currentTarget and (UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UserInputService:IsKeyDown(Enum.KeyCode.E)) then
-                    Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, currentTarget.Position), 1 / (SETTINGS.Aimbot.Smoothing + 1))
-                end
-            end
-            if SETTINGS.Combat.MagicBullet and not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then currentTarget = GetTarget() end
-        end
-        local function OnInputBegan(input)
-            if SETTINGS.Combat.MagicBullet and input.UserInputType == Enum.UserInputType.MouseButton1 and currentTarget then
-                local originalCFrame = Camera.CFrame
-                Camera.CFrame = CFrame.new(originalCFrame.Position, currentTarget.Position)
-                RunService.RenderStepped:Wait() 
-                Camera.CFrame = originalCFrame
-            end
-        end
-        return { Update = Update, OnInputBegan = OnInputBegan }
-    end
+    local Button = Instance.new("TextButton")
+    Button.Parent = ToggleFrame
+    Button.Size = UDim2.new(0.25, 0, 0.8, 0)
+    Button.Position = UDim2.new(0.725, 0, 0.1, 0)
+    Button.BackgroundColor3 = flagTable[flagKey] and Color3.fromRGB(255, 0, 80) or Color3.fromRGB(80, 80, 80)
+    Button.Font = Enum.Font.SourceSansBold
+    Button.Text = flagTable[flagKey] and "ON" or "OFF"
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
     
-    function CORE.Modules.ESP()
-        local drawings = {}
-        local chamsApplied = {}
-
-        local function ClearDrawings() for _,d in pairs(drawings) do d:Remove() end drawings = {} end
-
-        local function Update()
-            ClearDrawings()
-
-            for player, original in pairs(chamsApplied) do
-                if player.Character then
-                    for part, props in pairs(original) do part.Material = props.Material; part.Color = props.Color end
-                end
-            end
-            chamsApplied = {}
-            
-            if not SETTINGS.ESP.Enabled then 
-                for _, pool in pairs(CORE.GUI.ESPPool) do if pool.Holder.Enabled then pool.Holder.Enabled = false end end
-                return 
-            end
-
-            for player, pool in pairs(CORE.GUI.ESPPool) do
-                local char = player.Character
-                if char and char.Parent and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") and player ~= LocalPlayer then
-                    local humanoid = char.Humanoid
-                    if humanoid.Health <= 0 or (SETTINGS.ESP.TeamCheck and player.Team == LocalPlayer.Team) then pool.Holder.Enabled = false; continue end
-                    
-                    if SETTINGS.ESP.Chams then
-                        chamsApplied[player] = {}
-                        for _, part in ipairs(char:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                chamsApplied[player][part] = {Material = part.Material, Color = part.Color}
-                                part.Material = Enum.Material.ForceField
-                                part.Color = player.TeamColor.Color
-                            end
-                        end
-                    end
-                    
-                    local root = char.HumanoidRootPart
-                    local head = char.Head
-                    local screenPos, onScreen = Camera:WorldToScreenPoint(root.Position)
-                    
-                    if onScreen then
-                        pool.Holder.Enabled = true
-                        local headPos = Camera:WorldToScreenPoint(head.Position)
-                        local boxH = math.abs(headPos.Y - screenPos.Y); local boxW = boxH / 1.5; local boxPos = Vector2.new(screenPos.X - boxW/2, headPos.Y)
-                        local yOffset = -15
-                        
-                        pool.Name.Visible = SETTINGS.ESP.Names; pool.Name.Position = UDim2.fromOffset(boxPos.X + boxW/2, boxPos.Y + yOffset); pool.Name.Text = player.Name; yOffset = yOffset - 15
-                        pool.Box.Visible = SETTINGS.ESP.Boxes; pool.Box.Position = UDim2.fromOffset(boxPos.X, boxPos.Y); pool.Box.Size = UDim2.fromOffset(boxW, boxH); pool.Box.Color = player.TeamColor.Color
-
-                        pool.HealthBar.Visible = SETTINGS.ESP.HealthBars; pool.HealthBar.Position = UDim2.fromOffset(boxPos.X - 6, boxPos.Y); pool.HealthBar.Size = UDim2.fromOffset(4, boxH)
-                        local hp = humanoid.Health / humanoid.MaxHealth; pool.HealthFill.Size = UDim2.new(1, hp, 1, 0); pool.HealthFill.BackgroundColor3 = Color3.fromHSV(hp / 3, 1, 1)
-
-                        yOffset = 2
-                        pool.Distance.Visible = SETTINGS.ESP.Distance; pool.Distance.Position = UDim2.fromOffset(boxPos.X + boxW/2, screenPos.Y + yOffset); local dist = math.floor((root.Position - Camera.CFrame.Position).Magnitude); pool.Distance.Text = dist .. "m"; yOffset = yOffset + 12
-                        
-                        local tool = char:FindFirstChildOfClass("Tool"); pool.Weapon.Visible = SETTINGS.ESP.Weapon; pool.Weapon.Position = UDim2.fromOffset(boxPos.X + boxW/2, screenPos.Y + yOffset); pool.Weapon.Text = tool and tool.Name or ""
-                        
-                        if SETTINGS.ESP.HeadDots then local dot = Drawing.new("Circle"); dot.Radius=4; dot.Filled=true; dot.Color=Color3.new(1,0,0); dot.Position=headPos; table.insert(drawings, dot) end
-                    else
-                        pool.Holder.Enabled = false
-                    end
-                else
-                    pool.Holder.Enabled = false
-                end
-            end
-        end
-        return { Update = Update }
-    end
-
-    function CORE:Init()
-        BuildGUI()
-        for _, player in ipairs(Players:GetPlayers()) do CreateGUIPool(player) end
-        table.insert(self.Connections, Players.PlayerAdded:Connect(CreateGUIPool))
-
-        for name, moduleFunc in pairs(self.Modules) do self.Modules[name] = moduleFunc() end
-        
-        table.insert(self.Connections, RunService.RenderStepped:Connect(function()
-            if not self.Active then return end
-            for _, module in pairs(self.Modules) do if module.Update then module.Update() end end
-        end))
-        
-        table.insert(self.Connections, UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe then return end
-            for _, module in pairs(self.Modules) do if module.OnInputBegan then module.OnInputBegan(input) end end
-        end))
-    end
-    
-    CORE:Init()
+    Button.MouseButton1Click:Connect(function()
+        flagTable[flagKey] = not flagTable[flagKey]
+        Button.BackgroundColor3 = flagTable[flagKey] and Color3.fromRGB(255, 0, 80) or Color3.fromRGB(80, 80, 80)
+        Button.Text = flagTable[flagKey] and "ON" or "OFF"
+    end)
 end
 
-pcall(RYOFC_PHOENIX_ENGINE_V2)
+-- Populate UI
+CreateToggle(Container, "Aimbot", Settings.Aimbot, "Enabled")
+CreateToggle(Container, "Silent Aim", Settings.SilentAim, "Enabled")
+CreateToggle(Container, "Magic Bullet", Settings.MagicBullet, "Enabled")
+CreateToggle(Container, "Full ESP", Settings.ESP, "Enabled")
+CreateToggle(Container, "ESP: Names", Settings.ESP, "Names")
+CreateToggle(Container, "ESP: Distance", Settings.ESP, "Distance")
+CreateToggle(Container, "ESP: Boxes", Settings.ESP, "Boxes")
+CreateToggle(Container, "ESP: Health", Settings.ESP, "Health")
+CreateToggle(Container, "ESP: Tracers", Settings.ESP, "Tracers")
+CreateToggle(Container, "ESP: Skeleton", Settings.ESP, "Skeleton")
+CreateToggle(Container, "ESP: Team Check", Settings.ESP, "TeamCheck")
+
+-- Make window draggable
+local dragging
+local dragInput
+local dragStart
+local startPos
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainWindow.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+TitleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainWindow.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Parent the GUI to CoreGui
+ScreenGui.Parent = game:GetService("CoreGui")
+
+-- SECTION 3: FEATURE FUNCTIONS
+-- ==============================================================================================
+
+local function IsVisible(part)
+    local _, onScreen = Camera:WorldToScreenPoint(part.Position)
+    if onScreen then
+        local ray = Ray.new(Camera.CFrame.Position, part.Position - Camera.CFrame.Position)
+        local hit = Workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character})
+        return hit and hit:IsDescendantOf(part.Parent)
+    end
+    return false
+end
+
+local function ClearDrawings()
+    for _, v in ipairs(DrawingObjects) do v:Remove() end
+    DrawingObjects = {}
+end
+
+local function Draw(obj) table.insert(DrawingObjects, obj) end
+
+-- ESP Handler
+local function ESP_Handler(player)
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") or char.Humanoid.Health <= 0 then return end
+
+    local root, head, humanoid = char.HumanoidRootPart, char:FindFirstChild("Head"), char.Humanoid
+    if not root or not head then return end
+    
+    local isVisible = IsVisible(head)
+    local color = (isVisible and Settings.ESP.VisibleColor) or Settings.ESP.InvisibleColor
+
+    local pos, onScreen = Camera:WorldToScreenPoint(root.Position)
+    if onScreen then
+        local info = {}
+        if Settings.ESP.Names then table.insert(info, player.Name) end
+        if Settings.ESP.Distance then table.insert(info, string.format("[%dm]", (root.Position - Camera.CFrame.Position).Magnitude)) end
+        
+        local text = Drawing.new("Text")
+        text.Text = table.concat(info, " ")
+        text.Size = 14; text.Color = color; text.Center = true; text.Outline = true
+        text.Position = Vector2.new(pos.X, pos.Y - 40)
+        Draw(text)
+        
+        if Settings.ESP.Health then
+            local hp = humanoid.Health / humanoid.MaxHealth
+            local hpColor = Color3.fromHSV(hp * 0.33, 1, 1)
+            local hpY = pos.Y - 35
+            
+            local back = Drawing.new("Line")
+            back.From = Vector2.new(pos.X - 25, hpY); back.To = Vector2.new(pos.X + 25, hpY)
+            back.Color = Color3.new(0,0,0); back.Thickness = 4; Draw(back)
+
+            local front = Drawing.new("Line")
+            front.From = Vector2.new(pos.X - 25, hpY); front.To = Vector2.new(pos.X - 25 + (50 * hp), hpY)
+            front.Color = hpColor; front.Thickness = 4; Draw(front)
+        end
+        
+        if Settings.ESP.Tracers then
+            local tracer = Drawing.new("Line")
+            tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+            tracer.To = Vector2.new(pos.X, pos.Y + 25); tracer.Color = color; tracer.Thickness = 1
+            Draw(tracer)
+        end
+    end
+    
+    if Settings.ESP.Boxes then
+        local cf, size = root.CFrame, Vector3.new(4, 6, 2)
+        local points = {
+            cf * CFrame.new(size.X/2, size.Y/2, 0).Position, cf * CFrame.new(-size.X/2, size.Y/2, 0).Position,
+            cf * CFrame.new(-size.X/2, -size.Y/2, 0).Position, cf * CFrame.new(size.X/2, -size.Y/2, 0).Position
+        }
+        local screenPoints = {}
+        local valid = true
+        for _, p in ipairs(points) do
+            local sp, onScreen = Camera:WorldToScreenPoint(p)
+            if not onScreen then valid = false; break end
+            table.insert(screenPoints, Vector2.new(sp.X, sp.Y))
+        end
+        if valid then
+            for i = 1, #screenPoints do
+                local line = Drawing.new("Line")
+                line.From = screenPoints[i]; line.To = screenPoints[i % #screenPoints + 1]
+                line.Color = color; line.Thickness = 1; Draw(line)
+            end
+        end
+    end
+
+    if Settings.ESP.Skeleton then
+        local bones = {
+            Head = "UpperTorso", UpperTorso = "LowerTorso",
+            LowerTorso = "RightUpperLeg", RightUpperLeg = "RightLowerLeg", RightLowerLeg = "RightFoot",
+            LowerTorso = "LeftUpperLeg", LeftUpperLeg = "LeftLowerLeg", LeftLowerLeg = "LeftFoot",
+            UpperTorso = "RightUpperArm", RightUpperArm = "RightLowerArm", RightLowerArm = "RightHand",
+            UpperTorso = "LeftUpperArm", LeftUpperArm = "LeftLowerArm", LeftLowerArm = "LeftHand"
+        }
+        for from, to in pairs(bones) do
+            local p1, p2 = char:FindFirstChild(from), char:FindFirstChild(to)
+            if p1 and p2 then
+                local sp1, os1 = Camera:WorldToScreenPoint(p1.Position)
+                local sp2, os2 = Camera:WorldToScreenPoint(p2.Position)
+                if os1 and os2 then
+                    local line = Drawing.new("Line"); line.From = Vector2.new(sp1.X, sp1.Y); line.To = Vector2.new(sp2.X, sp2.Y)
+                    line.Color = color; line.Thickness = 1; Draw(line)
+                end
+            end
+        end
+    end
+end
+
+-- Aimbot Handler
+local function Aimbot_Handler()
+    if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local bestTarget, smallestDist = nil, Settings.Aimbot.FOV
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(Settings.Aimbot.Part) and player.Character.Humanoid.Health > 0 then
+                if Settings.Aimbot.TeamCheck and player.TeamColor == LocalPlayer.TeamColor then continue end
+                local targetPart = player.Character[Settings.Aimbot.Part]
+                if Settings.Aimbot.VisibleOnly and not IsVisible(targetPart) then continue end
+                local pos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                    if dist < smallestDist then smallestDist, bestTarget = dist, targetPart end
+                end
+            end
+        end
+        if bestTarget then Camera.CFrame = CFrame.new(Camera.CFrame.Position, bestTarget.Position) end
+    end
+end
+
+-- Namecall hook for Silent Aim / Magic Bullet (Game-Dependent)
+-- This is the required architecture. The actual remote name will vary by game.
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    if Settings.SilentAim.Enabled and (method == "Fire" or method == "fire") and typeof(args[1]) == "Instance" and args[1]:IsA("Player") then
+        -- Find best target and replace args[2] (direction) or args[1] (target player)
+    end
+    
+    if Settings.MagicBullet.Enabled and (method == "FireServer" or method == "fireServer") and args[2] == "BulletData" then
+        -- Modify bullet trajectory data in args[3] to hit nearest enemy
+    end
+
+    return oldNamecall(...)
+end)
+
+
+-- SECTION 4: MAIN RENDER LOOP
+-- ==============================================================================================
+
+RunService.RenderStepped:Connect(function()
+    ClearDrawings()
+
+    if Settings.ESP.Enabled then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and (not Settings.ESP.TeamCheck or player.TeamColor ~= LocalPlayer.TeamColor) then
+                pcall(ESP_Handler, player)
+            end
+        end
+    end
+
+    if Settings.Aimbot.Enabled then
+        pcall(Aimbot_Handler)
+    end
+end)

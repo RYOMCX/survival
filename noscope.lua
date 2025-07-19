@@ -31,7 +31,7 @@ do
         UserInputService.InputChanged:Connect(function(input)
             if input == dragInput and dragging then
                 local delta = input.Position - dragStart
-                guiObject.Parent.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                guiObject.Parent.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, start_pos.Y.Scale, start_pos.Y.Offset + delta.Y)
             end
         end)
     end
@@ -43,19 +43,18 @@ do
         Create('TextLabel', {Name = "Title", Size = UDim2.new(1, -60, 1, 0), Position = UDim2.new(0,0,0,0), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(220, 220, 220), Text = title or "SkyLib", Font = Enum.Font.SourceSansBold, TextSize = 16, TextXAlignment = Enum.TextXAlignment.Left, Parent = header, {Create('UIPadding', {PaddingLeft = UDim.new(0, 10)})}})
         local closeButton = Create('TextButton', {Name = "Close", Size = UDim2.new(0, 30, 1, 0), Position = UDim2.new(1, -30, 0, 0), BackgroundColor3 = Color3.fromRGB(15,15,15), Text = "X", TextColor3 = Color3.fromRGB(220,220,220), Font = Enum.Font.SourceSansBold, TextSize = 16, Parent = header})
         local minimizeButton = Create('TextButton', {Name = "Minimize", Size = UDim2.new(0, 30, 1, 0), Position = UDim2.new(1, -60, 0, 0), BackgroundColor3 = Color3.fromRGB(15,15,15), Text = "-", TextColor3 = Color3.fromRGB(220,220,220), Font = Enum.Font.SourceSansBold, TextSize = 24, Parent = header})
-        local tabContainer = Create('Frame', {Name = "TabContainer", Size = UDim2.new(0, 100, 1, -30), Position = UDim2.new(0, 0, 0, 30), BackgroundColor3 = Color3.fromRGB(20, 20, 20), BorderSizePixel = 0, Parent = mainFrame})
+        local tabContainer = Create('Frame', {Name = "TabContainer", Size = UDim2.new(0, 100, 1, -30), Position = UDim2.new(0, 0, 0, 30), BackgroundColor3 = Color3.fromRGB(20, 20, 20), BorderSizePixel = 0, Parent = mainFrame, {Create('UIListLayout', {SortOrder = Enum.SortOrder.LayoutOrder})}})
         local contentContainer = Create('Frame', {Name = "ContentContainer", Size = UDim2.new(1, -100, 1, -30), Position = UDim2.new(0, 100, 0, 30), BackgroundColor3 = Color3.fromRGB(25, 25, 25), BorderSizePixel = 0, Parent = mainFrame})
         makeDraggable(header)
         local tabs, window = {}, {}
         function window:MakeTab(tabName)
-            local contentFrame = Create('Frame', {Name = tabName.."_Content", Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Parent = contentContainer, Visible = #tabs == 0, {Create('UIPadding', {Padding = UDim.new(0,10)}), Create('UIListLayout', {SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 5)})}})
-            local tabButton = Create('TextButton', {Name = tabName, Size = UDim2.new(1,0,0,35), BackgroundColor3 = #tabs == 0 and Color3.fromRGB(35,35,35) or Color3.fromRGB(20,20,20), Text = tabName, TextColor3 = Color3.fromRGB(200,200,200), Font = Enum.Font.SourceSans, TextSize = 16, Parent = tabContainer})
+            local contentFrame = Create('Frame', {Name = tabName.."_Content", Size = UDim2.new(1,0,1,0), BackgroundTransparency = 1, Parent = contentContainer, Visible = #tabs == 0, {Create('UIPadding', {PaddingLeft = UDim.new(0,10), PaddingRight = UDim.new(0,10), PaddingTop = UDim.new(0,10)}), Create('UIListLayout', {SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6)})}})
+            local tabButton = Create('TextButton', {Name = tabName, LayoutOrder = #tabs + 1, Size = UDim2.new(1,0,0,35), BackgroundColor3 = #tabs == 0 and Color3.fromRGB(35,35,35) or Color3.fromRGB(20,20,20), Text = tabName, TextColor3 = Color3.fromRGB(200,200,200), Font = Enum.Font.SourceSans, TextSize = 16, Parent = tabContainer})
             table.insert(tabs, {button = tabButton, content = contentFrame})
             tabButton.MouseButton1Click:Connect(function() for _, t in pairs(tabs) do t.content.Visible = false; t.button.BackgroundColor3 = Color3.fromRGB(20,20,20) end; contentFrame.Visible = true; tabButton.BackgroundColor3 = Color3.fromRGB(35,35,35) end)
             local tab = {_layoutOrder = 0, _frame = contentFrame}
             function tab:AddToggle(data)
-                self._layoutOrder = self._layoutOrder + 1
-                local state, cb = data.Default or false, data.Callback or function() end
+                self._layoutOrder = self._layoutOrder + 1; local state, cb = data.Default or false, data.Callback or function() end
                 local frame = Create('Frame', {Name = data.Name, LayoutOrder = self._layoutOrder, Size = UDim2.new(1,0,0,20), BackgroundTransparency = 1, Parent = self._frame})
                 local button = Create('TextButton', {Name = "Button", Size = UDim2.new(0,20,0,20), BackgroundColor3 = state and Color3.fromRGB(100,180,255) or Color3.fromRGB(50,50,50), Text = "", Parent = frame})
                 Create('TextLabel', {Name = "Label", Size = UDim2.new(1,-30,1,0), Position = UDim2.new(0,30,0,0), BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(220,220,220), Text = data.Name, Font = Enum.Font.SourceSans, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, Parent = frame})
@@ -77,13 +76,11 @@ do
                 local min, max, current = data.Min or 0, data.Max or 100, data.Default or 0
                 local cb = data.Callback or function() end
                 local function Update(inputPos)
-                    local railPos, railWidth = track.AbsolutePosition.X, track.AbsoluteSize.X
-                    if railWidth == 0 then return end
+                    local railPos, railWidth = track.AbsolutePosition.X, track.AbsoluteSize.X; if railWidth == 0 then return end
                     local percentage = math.clamp((inputPos.X - railPos) / railWidth, 0, 1)
                     current = min + (max - min) * percentage
                     fill.Size, thumb.Position = UDim2.new(percentage, 0, 1, 0), UDim2.new(percentage, -7, 0.5, -7)
-                    valueLabel.Text = string.format("%d%s", math.floor(current), data.Suffix or "")
-                    cb(current)
+                    valueLabel.Text = string.format("%d%s", math.floor(current), data.Suffix or ""); cb(current)
                 end
                 thumb.InputBegan:Connect(function() local mm; mm = UserInputService.InputChanged:Connect(function(inp) if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then Update(inp.Position) end end); local mu; mu = UserInputService.InputEnded:Connect(function(inp) if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then mm:Disconnect(); mu:Disconnect() end end) end)
                 task.wait(); Update(thumb.AbsolutePosition); cb(current)
@@ -156,7 +153,7 @@ function Functions.DrawESP_HeadDots(color, headPos) Functions.CreateDrawing("Cir
 function Functions.DrawESP_LookAt(head, color) local s,f = head.Position, head.Position+head.CFrame.LookVector*10; local v1,o1=Camera:WorldToViewportPoint(s); local v2,o2=Camera:WorldToViewportPoint(f); if o1 and o2 then Functions.CreateDrawing("Line",{From=Vector2.new(v1.X,v1.Y),To=Vector2.new(v2.X,v2.Y),Color=color,Thickness=2,Visible=true}) end end
 function Functions.HandleRejoin() pcall(TeleportService.Teleport, TeleportService, game.PlaceId, LocalPlayer) end
 
-local Window = SkyLib:CreateWindow("Project: SKYNET V3.2")
+local Window = SkyLib:CreateWindow("Project: SKYNET V3.3")
 local EspTab, AimTab, MiscTab = Window:MakeTab("ESP"), Window:MakeTab("Aim"), Window:MakeTab("Misc")
 
 AimTab:AddToggle({ Name = "Aimbot", Default = false, Callback = function(v) Config.Aimbot.Enabled = v end })

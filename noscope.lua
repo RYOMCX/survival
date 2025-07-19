@@ -1,324 +1,297 @@
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
-local Camera = Workspace.CurrentCamera
-local Lighting = game:GetService("Lighting")
+local function RYOFC_PHOENIX_ENGINE_V2()
+    local CoreGui = game:GetService("CoreGui")
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
+    local TweenService = game:GetService("TweenService")
+    local Workspace = game:GetService("Workspace")
+    local Camera = Workspace.CurrentCamera
+    local LocalPlayer = Players.LocalPlayer
 
-local LocalPlayer = Players.LocalPlayer
+    if not LocalPlayer then
+        Players.LocalPlayerAdded:Wait()
+        LocalPlayer = Players.LocalPlayer
+    end
 
-local CORE = {
-    GUI = {},
-    Modules = {},
-    Connections = {},
-    Active = true,
-}
-
-local SETTINGS = {
-    Aimbot = {
-        Enabled = false,
-        Silent = false,
-        AimKey = Enum.KeyCode.E,
-        TargetPart = "Head",
-        FOV = 120,
-        Smoothing = 5,
-        TeamCheck = true,
-        VisibilityCheck = true,
-    },
-    Combat = {
-        Triggerbot = false,
-        TriggerKey = Enum.KeyCode.LeftAlt,
-    },
-    ESP = {
-        Enabled = true,
-        TeamCheck = true,
-        Boxes = true,
-        Names = true,
-        Distance = true,
-        HealthBars = true,
-        Skeleton = true,
-        Tracers = true,
-        Chams = false,
-    },
-    Misc = {
-        PanicKey = Enum.KeyCode.Delete
+    local CORE = {
+        Active = true,
+        Connections = {},
+        Modules = {},
+        GUI = {}
     }
-}
 
-local function CreateGUILibrary()
-    local library = {}
-    local mainFrame, header, contentFrame, tabContainer
-    local tabs = {}
-    local activeTab = nil
-    
-    function library:CreateWindow(title)
-        mainFrame = Instance.new("Frame")
-        mainFrame.Size = UDim2.new(0, 550, 0, 350)
-        mainFrame.Position = UDim2.new(0.5, -275, 0.5, -175)
-        mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-        mainFrame.Draggable = true
-        mainFrame.Active = true
-        Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 5)
+    local SETTINGS = {
+        Aimbot = {
+            Enabled = true,
+            TargetPart = "Head",
+            FOV = 150,
+            Smoothing = 3,
+            TeamCheck = true,
+            VisibilityCheck = true,
+        },
+        Combat = {
+            MagicBullet = false,
+            AutoHeadshot = true,
+            Triggerbot = false,
+        },
+        ESP = {
+            Enabled = true,
+            TeamCheck = true,
+            Boxes = true,
+            Names = true,
+            Distance = true,
+            HealthBars = true,
+            HealthText = true,
+            Weapon = true,
+            Skeleton = true,
+            Tracers = true,
+            HeadDots = true,
+            Chams = true,
+            OffscreenArrows = true,
+        },
+    }
 
-        header = Instance.new("Frame", mainFrame)
-        header.Size = UDim2.new(1, 0, 0, 35)
-        header.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    local function CreateGUIPool(player)
+        if CORE.GUI.ESPPool and CORE.GUI.ESPPool[player] then return end
+        local pool = {}
+        pool.Holder = Instance.new("BillboardGui", CoreGui)
+        pool.Holder.AlwaysOnTop = true
+        pool.Holder.Size = UDim2.new(0, 0, 0, 0)
+        pool.Holder.Enabled = false
+
+        pool.Box = Instance.new("Frame", pool.Holder)
+        pool.Box.BackgroundTransparency = 1
+        pool.Box.BorderSizePixel = 1
         
-        local titleLabel = Instance.new("TextLabel", header)
-        titleLabel.Size = UDim2.new(1, -80, 1, 0)
-        titleLabel.Position = UDim2.new(0, 10, 0, 0)
-        titleLabel.Text = title
-        titleLabel.Font = Enum.Font.GothamSemibold
-        titleLabel.TextColor3 = Color3.new(1, 1, 1)
-        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-        local closeButton = Instance.new("TextButton", header)
-        closeButton.Size = UDim2.new(0, 20, 0, 20)
-        closeButton.Position = UDim2.new(1, -28, 0.5, -10)
-        closeButton.Text = "X"
-        closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        closeButton.MouseButton1Click:Connect(function() CORE.GUI:Destroy() end)
-
-        local minimizeButton = Instance.new("TextButton", header)
-        minimizeButton.Size = UDim2.new(0, 20, 0, 20)
-        minimizeButton.Position = UDim2.new(1, -53, 0.5, -10)
-        minimizeButton.Text = "-"
-        minimizeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        pool.Name = Instance.new("TextLabel", pool.Holder)
+        pool.Name.Font = Enum.Font.SourceSans; pool.Name.TextSize = 14; pool.Name.TextColor3 = Color3.new(1,1,1); pool.Name.BackgroundTransparency = 1
         
-        local restoreButton = Instance.new("TextButton", mainFrame.Parent)
-        restoreButton.Size = UDim2.new(0, 150, 0, 30)
-        restoreButton.Position = UDim2.new(0.5, -75, 1, -40)
-        restoreButton.Text = "RYOFC HACKS"
-        restoreButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-        restoreButton.TextColor3 = Color3.new(1,1,1)
-        restoreButton.Visible = false
+        pool.HealthBar = Instance.new("Frame", pool.Holder)
+        pool.HealthBar.BackgroundColor3 = Color3.fromRGB(20,20,20); pool.HealthBar.BorderSizePixel = 0
+        pool.HealthFill = Instance.new("Frame", pool.HealthBar)
         
-        minimizeButton.MouseButton1Click:Connect(function()
-            mainFrame.Visible = false
-            restoreButton.Visible = true
-        end)
+        pool.HealthText = Instance.new("TextLabel", pool.Holder)
+        pool.HealthText.Font = Enum.Font.SourceSans; pool.HealthText.TextSize = 12; pool.HealthText.TextColor3 = Color3.new(1,1,1); pool.HealthText.BackgroundTransparency = 1
         
-        restoreButton.MouseButton1Click:Connect(function()
-            mainFrame.Visible = true
-            restoreButton.Visible = false
-        end)
-
-        tabContainer = Instance.new("Frame", mainFrame)
-        tabContainer.Position = UDim2.new(0, 0, 0, 35)
-        tabContainer.Size = UDim2.new(0, 130, 1, -35)
-        tabContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-        Instance.new("UIListLayout", tabContainer).Padding = UDim.new(0, 5)
+        pool.Distance = Instance.new("TextLabel", pool.Holder)
+        pool.Distance.Font = Enum.Font.SourceSans; pool.Distance.TextSize = 12; pool.Distance.TextColor3 = Color3.new(1,1,1); pool.Distance.BackgroundTransparency = 1
         
-        contentFrame = Instance.new("Frame", mainFrame)
-        contentFrame.Position = UDim2.new(0, 130, 0, 35)
-        contentFrame.Size = UDim2.new(1, -130, 1, -35)
-        contentFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-
-        mainFrame.Parent = CoreGui
-        return mainFrame
+        pool.Weapon = Instance.new("TextLabel", pool.Holder)
+        pool.Weapon.Font = Enum.Font.SourceSans; pool.Weapon.TextSize = 12; pool.Weapon.TextColor3 = Color3.new(1,1,1); pool.Weapon.BackgroundTransparency = 1
+        
+        CORE.GUI.ESPPool[player] = pool
     end
-    
-    function library:CreateTab(name)
-        local page = Instance.new("ScrollingFrame", contentFrame)
-        page.Size = UDim2.new(1, 0, 1, 0)
-        page.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-        page.BorderSizePixel = 0
-        page.Visible = false
-        Instance.new("UIListLayout", page).Padding = UDim.new(0, 10)
 
-        local button = Instance.new("TextButton", tabContainer)
-        button.Size = UDim2.new(1, -10, 0, 30)
-        button.Position = UDim2.new(0.5, -button.Size.X.Offset/2, 0, 0)
-        button.Text = name
-        button.BackgroundColor3 = Color3.fromRGB(40,40,45)
-        button.TextColor3 = Color3.new(1,1,1)
-        button.MouseButton1Click:Connect(function()
-            if activeTab then
-                activeTab.Page.Visible = false
-                activeTab.Button.BackgroundColor3 = Color3.fromRGB(40,40,45)
+    local function BuildGUI()
+        CORE.GUI.ESPPool = {}
+        CORE.GUI.ScreenGui = Instance.new("ScreenGui", CoreGui)
+
+        local MainFrame = Instance.new("Frame", CORE.GUI.ScreenGui)
+        MainFrame.Size = UDim2.new(0, 250, 0, 420)
+        MainFrame.Position = UDim2.new(1, -270, 0.5, -210)
+        MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        MainFrame.Draggable = true
+        Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 4)
+
+        local Header = Instance.new("Frame", MainFrame)
+        Header.Size = UDim2.new(1, 0, 0, 30)
+        Header.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        local Title = Instance.new("TextLabel", Header)
+        Title.Size = UDim2.new(1, -60, 1, 0)
+        Title.Text = "RYOFC PHOENIX V2"
+        Title.Font = Enum.Font.GothamBold
+        Title.TextColor3 = Color3.new(1,1,1)
+        
+        local CloseButton = Instance.new("TextButton", Header)
+        CloseButton.Size = UDim2.new(0,20,0,20); CloseButton.Position = UDim2.new(1,-25,0.5,-10); CloseButton.Text = "X"; CloseButton.BackgroundColor3 = Color3.fromRGB(200,50,50)
+        CloseButton.MouseButton1Click:Connect(function() CORE.GUI.ScreenGui:Destroy() CORE.Active = false for _,c in pairs(CORE.Connections) do c:Disconnect() end end)
+
+        local MinimizeButton = Instance.new("TextButton", Header)
+        MinimizeButton.Size = UDim2.new(0,20,0,20); MinimizeButton.Position = UDim2.new(1,-50,0.5,-10); MinimizeButton.Text = "-"; MinimizeButton.BackgroundColor3 = Color3.fromRGB(80,80,80)
+
+        local RestoreButton = Instance.new("TextButton", CORE.GUI.ScreenGui)
+        RestoreButton.Size = UDim2.new(0,120,0,30); RestoreButton.Position = UDim2.new(1,-130,1,-40); RestoreButton.Text = "RYOFC HACKS"; RestoreButton.Visible = false; RestoreButton.BackgroundColor3 = Color3.fromRGB(40,40,45); RestoreButton.TextColor3 = Color3.new(1,1,1)
+        
+        MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false; RestoreButton.Visible = true end)
+        RestoreButton.MouseButton1Click:Connect(function() MainFrame.Visible = true; RestoreButton.Visible = false end)
+        
+        local Content = Instance.new("ScrollingFrame", MainFrame)
+        Content.Size = UDim2.new(1, -10, 1, -35); Content.Position = UDim2.new(0, 5, 0, 35); Content.CanvasSize = UDim2.new(0,0,0,0); Content.BackgroundTransparency = 1; Content.BorderSizePixel = 0
+        local Layout = Instance.new("UIListLayout", Content)
+        Layout.Padding = UDim.new(0, 5)
+
+        local function CreateCategory(text)
+            local label = Instance.new("TextLabel", Content)
+            label.Size = UDim2.new(1,0,0,25); label.Text = "--- "..text.." ---"; label.Font = Enum.Font.GothamBold; label.TextColor3 = Color3.new(1,1,1); label.BackgroundTransparency = 1
+        end
+
+        local function CreateToggle(parent, text, category, key)
+            local container = Instance.new("TextButton", parent)
+            container.Size = UDim2.new(1, -10, 0, 25); container.Text = ""; container.BackgroundColor3 = Color3.fromRGB(50,50,55)
+            local label = Instance.new("TextLabel", container)
+            label.Size = UDim2.new(1,0,1,0); label.Text = text; label.TextColor3 = Color3.new(1,1,1); label.BackgroundTransparency = 1
+            local indicator = Instance.new("Frame", container)
+            indicator.Size = UDim2.new(0,10,0,10); indicator.Position = UDim2.new(1,-15,0.5,-5); indicator.BorderSizePixel = 0
+            local function update() indicator.BackgroundColor3 = SETTINGS[category][key] and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,0,0) end
+            container.MouseButton1Click:Connect(function() SETTINGS[category][key] = not SETTINGS[category][key]; update() end)
+            update()
+        end
+        
+        CreateCategory("COMBAT")
+        CreateToggle(Content, "Magic Bullet", "Combat", "MagicBullet")
+        CreateToggle(Content, "Auto Headshot", "Combat", "AutoHeadshot")
+        
+        CreateCategory("AIMBOT")
+        CreateToggle(Content, "Aimbot", "Aimbot", "Enabled")
+        
+        CreateCategory("ESP")
+        CreateToggle(Content, "ESP Enabled", "ESP", "Enabled")
+        CreateToggle(Content, "Boxes", "ESP", "Boxes")
+        CreateToggle(Content, "Names", "ESP", "Names")
+        CreateToggle(Content, "Health Bar", "ESP", "HealthBars")
+        CreateToggle(Content, "Health Text", "ESP", "HealthText")
+        CreateToggle(Content, "Distance", "ESP", "Distance")
+        CreateToggle(Content, "Weapon", "ESP", "Weapon")
+        CreateToggle(Content, "Tracers", "ESP", "Tracers")
+        CreateToggle(Content, "Skeleton", "ESP", "Skeleton")
+        CreateToggle(Content, "Head Dots", "ESP", "HeadDots")
+        CreateToggle(Content, "Chams", "ESP", "Chams")
+        CreateToggle(Content, "Off-screen Arrows", "ESP", "OffscreenArrows")
+        CreateToggle(Content, "Team Check", "ESP", "TeamCheck")
+        
+        Layout.Parent.CanvasSize = UDim2.new(0,0,0,Layout.AbsoluteContentSize.Y)
+    end
+
+    function CORE.Modules.Aimbot()
+        local currentTarget = nil
+        local function GetTarget()
+            local bestTarget, minFov = nil, SETTINGS.Aimbot.FOV
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character and (not SETTINGS.Aimbot.TeamCheck or player.Team ~= LocalPlayer.Team) then
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                    local targetPart = player.Character:FindFirstChild(SETTINGS.Aimbot.TargetPart)
+                    if SETTINGS.Combat.MagicBullet and SETTINGS.Combat.AutoHeadshot then targetPart = player.Character:FindFirstChild("Head") end
+                    if humanoid and humanoid.Health > 0 and targetPart then
+                        local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+                        if onScreen then
+                            local dist = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                            if dist < minFov then bestTarget = targetPart; minFov = dist end
+                        end
+                    end
+                end
             end
-            page.Visible = true
-            button.BackgroundColor3 = Color3.fromRGB(80,80,90)
-            activeTab = { Page = page, Button = button }
-        end)
-        
-        table.insert(tabs, { Page = page, Button = button })
-        if not activeTab then button.MouseButton1Click:Invoke() end
-        return page
+            return bestTarget
+        end
+        local function Update()
+            if SETTINGS.Aimbot.Enabled then
+                currentTarget = GetTarget()
+                if currentTarget and (UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or UserInputService:IsKeyDown(Enum.KeyCode.E)) then
+                    Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, currentTarget.Position), 1 / (SETTINGS.Aimbot.Smoothing + 1))
+                end
+            end
+            if SETTINGS.Combat.MagicBullet and not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then currentTarget = GetTarget() end
+        end
+        local function OnInputBegan(input)
+            if SETTINGS.Combat.MagicBullet and input.UserInputType == Enum.UserInputType.MouseButton1 and currentTarget then
+                local originalCFrame = Camera.CFrame
+                Camera.CFrame = CFrame.new(originalCFrame.Position, currentTarget.Position)
+                RunService.RenderStepped:Wait() 
+                Camera.CFrame = originalCFrame
+            end
+        end
+        return { Update = Update, OnInputBegan = OnInputBegan }
     end
     
-    function library:CreateToggle(parent, text, category, key)
-        local container = Instance.new("Frame", parent)
-        container.Size = UDim2.new(0.9, 0, 0, 25)
-        container.BackgroundTransparency = 1
-        local label = Instance.new("TextLabel", container)
-        label.Size = UDim2.new(0.7, -5, 1, 0)
-        label.Text = text
-        label.TextColor3 = Color3.new(1,1,1)
-        label.BackgroundTransparency = 1
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        
-        local toggleButton = Instance.new("TextButton", container)
-        toggleButton.Size = UDim2.new(0.3, 0, 1, 0)
-        toggleButton.Position = UDim2.new(0.7, 0, 0, 0)
-        toggleButton.Text = ""
-        local function update() toggleButton.BackgroundColor3 = SETTINGS[category][key] and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,0,0) end
-        toggleButton.MouseButton1Click:Connect(function() SETTINGS[category][key] = not SETTINGS[category][key]; update() end)
-        update()
-    end
-    
-    return library
-end
+    function CORE.Modules.ESP()
+        local drawings = {}
+        local chamsApplied = {}
 
-local function BuildGUI()
-    CORE.GUI = CreateGUILibrary()
-    CORE.GUI:CreateWindow("RYOFC DOMINION ENGINE")
-    
-    local aimbotTab = CORE.GUI:CreateTab("Aimbot")
-    CORE.GUI:CreateToggle(aimbotTab, "Enable Aimbot", "Aimbot", "Enabled")
-    CORE.GUI:CreateToggle(aimbotTab, "Silent Aim", "Aimbot", "Silent")
-    CORE.GUI:CreateToggle(aimbotTab, "Team Check", "Aimbot", "TeamCheck")
-    
-    local combatTab = CORE.GUI:CreateTab("Combat")
-    CORE.GUI:CreateToggle(combatTab, "Triggerbot", "Combat", "Triggerbot")
+        local function ClearDrawings() for _,d in pairs(drawings) do d:Remove() end drawings = {} end
 
-    local espTab = CORE.GUI:CreateTab("ESP")
-    CORE.GUI:CreateToggle(espTab, "Enable ESP", "ESP", "Enabled")
-    CORE.GUI:CreateToggle(espTab, "Boxes", "ESP", "Boxes")
-    CORE.GUI:CreateToggle(espTab, "Names", "ESP", "Names")
-    CORE.GUI:CreateToggle(espTab, "Distance", "ESP", "Distance")
-    CORE.GUI:CreateToggle(espTab, "Health Bars", "ESP", "HealthBars")
-    CORE.GUI:CreateToggle(espTab, "Skeleton", "ESP", "Skeleton")
-    CORE.GUI:CreateToggle(espTab, "Tracers", "ESP", "Tracers")
-    CORE.GUI:CreateToggle(espTab, "Chams", "ESP", "Chams")
+        local function Update()
+            ClearDrawings()
 
-    return CORE.GUI
-end
+            for player, original in pairs(chamsApplied) do
+                if player.Character then
+                    for part, props in pairs(original) do part.Material = props.Material; part.Color = props.Color end
+                end
+            end
+            chamsApplied = {}
+            
+            if not SETTINGS.ESP.Enabled then 
+                for _, pool in pairs(CORE.GUI.ESPPool) do if pool.Holder.Enabled then pool.Holder.Enabled = false end end
+                return 
+            end
 
-function CORE.Modules.ESP()
-    local drawings = {}
-    local function Clear()
-        for _,d in pairs(drawings) do d:Remove() end
-        drawings = {}
-    end
-    
-    local function Update()
-        Clear()
-        if not SETTINGS.ESP.Enabled then return end
-        
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and (not SETTINGS.ESP.TeamCheck or player.Team ~= LocalPlayer.Team) then
-                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                if humanoid and humanoid.Health > 0 then
-                    local root = player.Character.HumanoidRootPart
-                    local head = player.Character.Head
+            for player, pool in pairs(CORE.GUI.ESPPool) do
+                local char = player.Character
+                if char and char.Parent and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") and player ~= LocalPlayer then
+                    local humanoid = char.Humanoid
+                    if humanoid.Health <= 0 or (SETTINGS.ESP.TeamCheck and player.Team == LocalPlayer.Team) then pool.Holder.Enabled = false; continue end
+                    
+                    if SETTINGS.ESP.Chams then
+                        chamsApplied[player] = {}
+                        for _, part in ipairs(char:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                chamsApplied[player][part] = {Material = part.Material, Color = part.Color}
+                                part.Material = Enum.Material.ForceField
+                                part.Color = player.TeamColor.Color
+                            end
+                        end
+                    end
+                    
+                    local root = char.HumanoidRootPart
+                    local head = char.Head
                     local screenPos, onScreen = Camera:WorldToScreenPoint(root.Position)
+                    
                     if onScreen then
+                        pool.Holder.Enabled = true
                         local headPos = Camera:WorldToScreenPoint(head.Position)
-                        local boxH = math.abs(headPos.Y - screenPos.Y)
-                        local boxW = boxH / 1.5
+                        local boxH = math.abs(headPos.Y - screenPos.Y); local boxW = boxH / 1.5; local boxPos = Vector2.new(screenPos.X - boxW/2, headPos.Y)
+                        local yOffset = -15
                         
-                        if SETTINGS.ESP.Boxes then
-                            local box = Drawing.new("Quad")
-                            box.PointA = Vector2.new(screenPos.X - boxW/2, headPos.Y)
-                            box.PointB = Vector2.new(screenPos.X + boxW/2, headPos.Y)
-                            box.PointC = Vector2.new(screenPos.X + boxW/2, screenPos.Y)
-                            box.PointD = Vector2.new(screenPos.X - boxW/2, screenPos.Y)
-                            box.Color = player.TeamColor.Color
-                            table.insert(drawings, box)
-                        end
-                        if SETTINGS.ESP.Tracers then
-                            local tracer = Drawing.new("Line")
-                            tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                            tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-                            tracer.Color = player.TeamColor.Color
-                            table.insert(drawings, tracer)
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    return { Update = Update }
-end
+                        pool.Name.Visible = SETTINGS.ESP.Names; pool.Name.Position = UDim2.fromOffset(boxPos.X + boxW/2, boxPos.Y + yOffset); pool.Name.Text = player.Name; yOffset = yOffset - 15
+                        pool.Box.Visible = SETTINGS.ESP.Boxes; pool.Box.Position = UDim2.fromOffset(boxPos.X, boxPos.Y); pool.Box.Size = UDim2.fromOffset(boxW, boxH); pool.Box.Color = player.TeamColor.Color
 
-function CORE.Modules.Aimbot()
-    local target = nil
-    
-    local function GetTarget()
-        local bestTarget, minFov = nil, SETTINGS.Aimbot.FOV
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and (not SETTINGS.Aimbot.TeamCheck or player.Team ~= LocalPlayer.Team) then
-                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                local targetPart = player.Character:FindFirstChild(SETTINGS.Aimbot.TargetPart)
-                if humanoid and humanoid.Health > 0 and targetPart then
-                    local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
-                    if onScreen then
-                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
-                        if dist < minFov then
-                            bestTarget = targetPart
-                            minFov = dist
-                        end
+                        pool.HealthBar.Visible = SETTINGS.ESP.HealthBars; pool.HealthBar.Position = UDim2.fromOffset(boxPos.X - 6, boxPos.Y); pool.HealthBar.Size = UDim2.fromOffset(4, boxH)
+                        local hp = humanoid.Health / humanoid.MaxHealth; pool.HealthFill.Size = UDim2.new(1, hp, 1, 0); pool.HealthFill.BackgroundColor3 = Color3.fromHSV(hp / 3, 1, 1)
+
+                        yOffset = 2
+                        pool.Distance.Visible = SETTINGS.ESP.Distance; pool.Distance.Position = UDim2.fromOffset(boxPos.X + boxW/2, screenPos.Y + yOffset); local dist = math.floor((root.Position - Camera.CFrame.Position).Magnitude); pool.Distance.Text = dist .. "m"; yOffset = yOffset + 12
+                        
+                        local tool = char:FindFirstChildOfClass("Tool"); pool.Weapon.Visible = SETTINGS.ESP.Weapon; pool.Weapon.Position = UDim2.fromOffset(boxPos.X + boxW/2, screenPos.Y + yOffset); pool.Weapon.Text = tool and tool.Name or ""
+                        
+                        if SETTINGS.ESP.HeadDots then local dot = Drawing.new("Circle"); dot.Radius=4; dot.Filled=true; dot.Color=Color3.new(1,0,0); dot.Position=headPos; table.insert(drawings, dot) end
+                    else
+                        pool.Holder.Enabled = false
                     end
-                end
-            end
-        end
-        return bestTarget
-    end
-    
-    local function Update()
-        if SETTINGS.Aimbot.Enabled and UserInputService:IsKeyDown(SETTINGS.Aimbot.AimKey) then
-            target = GetTarget()
-            if target then
-                if SETTINGS.Aimbot.Silent then
-                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
                 else
-                    local newCFrame = CFrame.new(Camera.CFrame.Position, target.Position)
-                    Camera.CFrame = Camera.CFrame:Lerp(newCFrame, 1 / (SETTINGS.Aimbot.Smoothing + 1))
+                    pool.Holder.Enabled = false
                 end
             end
         end
+        return { Update = Update }
+    end
+
+    function CORE:Init()
+        BuildGUI()
+        for _, player in ipairs(Players:GetPlayers()) do CreateGUIPool(player) end
+        table.insert(self.Connections, Players.PlayerAdded:Connect(CreateGUIPool))
+
+        for name, moduleFunc in pairs(self.Modules) do self.Modules[name] = moduleFunc() end
+        
+        table.insert(self.Connections, RunService.RenderStepped:Connect(function()
+            if not self.Active then return end
+            for _, module in pairs(self.Modules) do if module.Update then module.Update() end end
+        end))
+        
+        table.insert(self.Connections, UserInputService.InputBegan:Connect(function(input, gpe)
+            if gpe then return end
+            for _, module in pairs(self.Modules) do if module.OnInputBegan then module.OnInputBegan(input) end end
+        end))
     end
     
-    return { Update = Update }
+    CORE:Init()
 end
 
-function CORE.Modules.Combat()
-    local function Update()
-        if SETTINGS.Combat.Triggerbot and UserInputService:IsKeyDown(SETTINGS.Combat.TriggerKey) then
-            local mouseRay = Camera:ScreenPointToRay(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
-            local result = Workspace:Raycast(mouseRay.Origin, mouseRay.Direction * 1000)
-            if result and result.Instance then
-                local player = Players:GetPlayerFromCharacter(result.Instance.Parent)
-                if player and player ~= LocalPlayer and (not SETTINGS.Aimbot.TeamCheck or player.Team ~= LocalPlayer.Team) then
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, nil, 1)
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, nil, 1)
-                end
-            end
-        end
-    end
-    
-    return { Update = Update }
-end
-
-
-function CORE:Init()
-    BuildGUI()
-    
-    for name, moduleFunc in pairs(self.Modules) do
-        self.Modules[name] = moduleFunc()
-    end
-    
-    table.insert(self.Connections, RunService.RenderStepped:Connect(function()
-        if not self.Active then return end
-        for _, module in pairs(self.Modules) do
-            if module.Update then module.Update() end
-        end
-    end))
-end
-
-CORE:Init()
+pcall(RYOFC_PHOENIX_ENGINE_V2)
